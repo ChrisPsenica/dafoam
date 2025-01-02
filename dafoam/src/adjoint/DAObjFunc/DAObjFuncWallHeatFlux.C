@@ -264,7 +264,7 @@ void DAObjFuncWallHeatFlux::calcObjFunc(
         }
         else
         {
-           FatalErrorIn(" ") << "mode for "
+           FatalErrorIn(" ") << "scheme for "
                             << objFuncName_ << " " << objFuncPart_ << " not valid!"
                             << "Options: byUnitArea (default value), total."
                             << abort(FatalError);
