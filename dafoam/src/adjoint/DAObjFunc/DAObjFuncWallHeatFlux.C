@@ -220,6 +220,7 @@ void DAObjFuncWallHeatFlux::calcObjFunc(
                 
                 vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
                 vector c2 = mesh_.C()[nearWallCellIndex];
+                printf(" ## LINE = 223 ## ");
                 scalar d = mag(c1 - c2);
                 scalar dTdz = (T2 - T1) / d;
 
@@ -242,6 +243,7 @@ void DAObjFuncWallHeatFlux::calcObjFunc(
         if (!wallHeatFluxBf[patchI].coupled())
         {
             wallHeatFluxBf[patchI] = alphaEffBf[patchI] * heBf[patchI].snGrad();
+            printf(" ## LINE = 246 ## ");
         }
     }
 #endif
@@ -256,6 +258,7 @@ void DAObjFuncWallHeatFlux::calcObjFunc(
         if (!wallHeatFluxBf[patchI].coupled())
         {
             wallHeatFluxBf[patchI] = k_ * TBf[patchI].snGrad();
+            printf(" ## LINE = 261 ## ");
         }
     }
 #endif
@@ -273,10 +276,12 @@ void DAObjFuncWallHeatFlux::calcObjFunc(
         if (calcMode_ == "byUnitArea")
         {
             objFuncFaceValues[idxI] = scale_ * wallHeatFluxBf[patchI][faceI] * area / areaSum_;
+            printf(" ## LINE = 279 ## ");
         }
         else if (calcMode_ == "total")
         {
             objFuncFaceValues[idxI] = scale_ * wallHeatFluxBf[patchI][faceI] * area;
+            printf(" ## LINE = 284 ## ");
         }
         else
         {
