@@ -206,11 +206,27 @@ void DAObjFuncWallHeatFlux::calcObjFunc(
     volScalarField alphaEff = daTurb_.alphaEff();
     const volScalarField::Boundary& TBf = T.boundaryField();
     const volScalarField::Boundary& alphaEffBf = alphaEff.boundaryField();
+
+    // Info << " T field " << T << endl;
     forAll(wallHeatFluxBf, patchI)
     {
         if (!wallHeatFluxBf[patchI].coupled())
         {
-            wallHeatFluxBf[patchI] = Cp_ * alphaEffBf[patchI] * TBf[patchI].snGrad();
+            forAll(wallHeatFluxBf[patchI], faceI)
+            {
+                scalar T1 = TBf[patchI][faceI];
+                label nearWallCellIndex = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
+                scalar T2 = T[nearWallCellIndex];
+                
+                vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
+                vector c2 = mesh_.C()[nearWallCellIndex];
+                scalar d = mag(c1 - c2);
+                scalar dTdz = (T2 - T1) / d;
+
+                wallHeatFluxBf[patchI][faceI] = Cp_ * alphaEffBf[patchI][faceI] * dTdz;
+
+            }
+           // wallHeatFluxBf[patchI] = Cp_ * alphaEffBf[patchI] * TBf[patchI].snGrad();
         }
     }
 #endif
