@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "DAFunctionWallHeatFlux.C": "cpp",
+        "DAP1.C": "cpp",
+        "DARadiationModel.C": "cpp",
+        "DAPartDeriv.C": "cpp",
+        "makeDummyTurbulenceModelIncompressible.C": "cpp",
+        "SpalartAllmarasFv3.C": "cpp"
+    }
+}
