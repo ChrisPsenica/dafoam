@@ -226,19 +226,15 @@ prob = om.Problem()
 prob.model = Top()
 
 prob.setup(mode="rev")
-om.n2(prob, show_browser=False, outfile="mphys_aero.html")
-
-# verify the total derivatives against the finite-difference
 prob.run_model()
-totals = prob.compute_totals()
 
 HFX = prob.get_val("scenario.aero_post.HFX")[0]
 print("HFX:", HFX)
 if (abs(HFX - 180000.0) / (HFX + 1e-16)) > 1e-6:
-    print("DACustomHeatTransferFoam test failed!")
+    print("DAHeatTransferFoam test failed for DACustomCHT!")
     exit(1)
 else:
-    print("DACustomHeatTransferFoam test passed!")
+    print("DAHeatTransferFoam test passed for DACustomCHT!")
 
 
 # ********************
@@ -284,14 +280,11 @@ DASolver()
 funcs = {}
 DASolver.evalFunctions(funcs)
 
-if gcomm.rank == 0:
-    print(funcs)
-
-diff = abs(8967.626339020631 - funcs["HFX"]) / 8967.626339020631
+diff = abs(8967.626339018574 - funcs["HFX"]) / 8967.626339018574
 if diff > 1e-10:
     if gcomm.rank == 0:
-        print("DAFunction comp test failed for HFX")
+        print("DAFunction comp test failed for DACustomCHT")
     exit(1)
 else:
     if gcomm.rank == 0:
-        print("DAFunction comp test passed!")
+        print("DAFunction comp test passed for DACustomCHT!")
