@@ -41,11 +41,11 @@ DAFunctionWallHeatFlux::DAFunctionWallHeatFlux(
 {
 
     // check and assign values for scheme and formulation
-    formMode_ = functionDict_.lookupOrDefault<word>("formulation", "default");
-    if (formMode_ != "daCustom" && formMode_ != "default")
+    distanceMode_ = daOption_.getAllOptions().lookupOrDefault<word>("wallDistanceMethod", "default");
+    if (distanceMode_ != "daCustom" && distanceMode_ != "default")
     {
-        FatalErrorIn(" ") << "formulation: "
-                          << formMode_ << " not supported!"
+        FatalErrorIn(" ") << "wallDistanceMethod: "
+                          << distanceMode_ << " not supported!"
                           << " Options are: default and daCustom."
                           << abort(FatalError);
     }
@@ -153,12 +153,12 @@ scalar DAFunctionWallHeatFlux::calcFunction()
                 if (!wallHeatFluxBf[patchI].coupled())
                 {
                     // use OpenFOAM's snGrad()
-                    if (formMode_ == "default")
+                    if (distanceMode_ == "default")
                     {
                         wallHeatFluxBf[patchI] = Cp_ * alphaEffBf[patchI] * TBf[patchI].snGrad();
                     }
                     // use DAFOAM's custom formulation
-                    else if (formMode_ == "daCustom")
+                    else if (distanceMode_ == "daCustom")
                     {
                         forAll(wallHeatFluxBf[patchI], faceI)
                         {
@@ -190,12 +190,12 @@ scalar DAFunctionWallHeatFlux::calcFunction()
                 if (!wallHeatFluxBf[patchI].coupled())
                 {
                     // use OpenFOAM's snGrad()
-                    if (formMode_ == "default")
+                    if (distanceMode_ == "default")
                     {
                         wallHeatFluxBf[patchI] = alphaEffBf[patchI] * heBf[patchI].snGrad();
                     }
                     // use DAFOAM's custom formulation
-                    else if (formMode_ == "daCustom")
+                    else if (distanceMode_ == "daCustom")
                     {
                         forAll(wallHeatFluxBf[patchI], faceI)
                         {
@@ -227,12 +227,12 @@ scalar DAFunctionWallHeatFlux::calcFunction()
             {
 
                 // use OpenFOAM's snGrad()
-                if (formMode_ == "default")
+                if (distanceMode_ == "default")
                 {
                     wallHeatFluxBf[patchI] = k_ * TBf[patchI].snGrad();
                 }
                 // use DAFOAM's custom formulation
-                else if (formMode_ == "daCustom")
+                else if (distanceMode_ == "daCustom")
                 {
                     forAll(wallHeatFluxBf[patchI], faceI)
                     {

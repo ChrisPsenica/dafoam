@@ -40,11 +40,11 @@ DAInputThermalCoupling::DAInputThermalCoupling(
     discipline_ = daOption_.getAllOptions().getWord("discipline");
 
     // check coupling mode and validate
-    couplingMode_ = daOption_.getAllOptions().subDict("inputInfo").subDict(inputName_).lookupOrDefault<word>("thermalCouplingMode", "default");
-    if (couplingMode_ != "daCustom" && couplingMode_ != "default")
+    distanceMode_ = daOption_.getAllOptions().lookupOrDefault<word>("wallDistanceMethod", "default");
+    if (distanceMode_ != "daCustom" && distanceMode_ != "default")
     {
-        FatalErrorIn(" ") << "thermalCouplingMode: "
-                          << couplingMode_ << " not supported!"
+        FatalErrorIn(" ") << "wallDistanceMethod: "
+                          << distanceMode_ << " not supported!"
                           << " Options are: default and daCustom."
                           << abort(FatalError);
     }
@@ -128,12 +128,12 @@ Description:
 
                 forAll(mesh_.boundaryMesh()[patchI], faceI)
                 {
-                    if (couplingMode_ == "default")
+                    if (distanceMode_ == "default")
                     {
                         // deltaCoeffs = 1 / d
                         deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
                     }
-                    else if (couplingMode_ == "daCustom")
+                    else if (distanceMode_ == "daCustom")
                     {
                         label nearWallCellIndex = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
                         vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
@@ -198,12 +198,12 @@ Description:
 
                 forAll(mesh_.boundaryMesh()[patchI], faceI)
                 {
-                    if (couplingMode_ == "default")
+                    if (distanceMode_ == "default")
                     {
                         // deltaCoeffs = 1 / d
                         deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
                     }
-                    else if (couplingMode_ == "daCustom")
+                    else if (distanceMode_ == "daCustom")
                     {
                         label nearWallCellIndex = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
                         vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
@@ -242,12 +242,12 @@ Description:
 
             forAll(mesh_.boundaryMesh()[patchI], faceI)
             {
-                if (couplingMode_ == "default")
+                if (distanceMode_ == "default")
                 {
                     // deltaCoeffs = 1 / d
                     deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
                 }
-                else if (couplingMode_ == "daCustom")
+                else if (distanceMode_ == "daCustom")
                 {
                     label nearWallCellIndex = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
                     vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];

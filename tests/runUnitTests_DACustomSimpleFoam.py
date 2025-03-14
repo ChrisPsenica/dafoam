@@ -3,12 +3,13 @@
 Run Python tests for optimization integration
 """
 
-from mpi4py import MPI
+import openmdao.api as om
 import os
 import numpy as np
-from testFuncs import *
 
-import openmdao.api as om
+from mpi4py import MPI
+from dafoam import PYDAFOAM
+from testFuncs import *
 from mphys.multipoint import Multipoint
 from dafoam.mphys import DAFoamBuilder
 from funtofem.mphys import MeldThermalBuilder
@@ -16,9 +17,14 @@ from pygeo import geo_utils
 from mphys.scenario_aerothermal import ScenarioAeroThermal
 from pygeo.mphys import OM_DVGEOCOMP
 
-gcomm = MPI.COMM_WORLD
+# NOTE: we will test DASimpleFoam and DAHeatTransferFoam for incompressible, compressible, and solid solvers using the daCustom wallDistanceMethod
 
+# ********************
+# incompressible tests
+# ********************
+gcomm = MPI.COMM_WORLD
 os.chdir("./reg_test_files-main/ChannelConjugateHeatV4")
+
 if gcomm.rank == 0:
     os.system("rm -rf */processor*")
 
@@ -35,6 +41,7 @@ daOptionsAero = {
         "cold_air_sides",
     ],
     "solverName": "DASimpleFoam",
+    "wallDistanceMethod": "daCustom",
     "primalMinResTol": 1.0e-12,
     "primalMinResTolDiff": 1.0e12,
     "discipline": "aero",
@@ -46,7 +53,6 @@ daOptionsAero = {
     "function": {
         "HFX": {
             "type": "wallHeatFlux",
-            "formulation": "daCustom",
             "byUnitArea": False,
             "source": "patchToFace",
             "patches": ["hot_air_inner"],
@@ -72,7 +78,6 @@ daOptionsAero = {
         "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
         "T_convect": {
             "type": "thermalCouplingInput",
-            "thermalCouplingMode": "daCustom",
             "patches": ["hot_air_inner", "cold_air_outer"],
             "components": ["solver"],
         },
@@ -80,7 +85,6 @@ daOptionsAero = {
     "outputInfo": {
         "q_convect": {
             "type": "thermalCouplingOutput",
-            "thermalCouplingMode": "daCustom",
             "patches": ["hot_air_inner", "cold_air_outer"],
             "components": ["thermalCoupling"],
         },
@@ -90,13 +94,13 @@ daOptionsAero = {
 daOptionsThermal = {
     "designSurfaces": ["channel_outer", "channel_inner", "channel_sides"],
     "solverName": "DAHeatTransferFoam",
+    "wallDistanceMethod": "daCustom",
     "primalMinResTol": 1.0e-12,
     "primalMinResTolDiff": 1.0e12,
     "discipline": "thermal",
     "function": {
         "HF_INNER": {
             "type": "wallHeatFlux",
-            "formulation": "daCustom",
             "byUnitArea": False,
             "source": "patchToFace",
             "patches": ["channel_inner"],
@@ -118,7 +122,6 @@ daOptionsThermal = {
         "thermal_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
         "q_conduct": {
             "type": "thermalCouplingInput",
-            "thermalCouplingMode": "daCustom",
             "patches": ["channel_outer", "channel_inner"],
             "components": ["solver"],
         },
@@ -126,7 +129,6 @@ daOptionsThermal = {
     "outputInfo": {
         "T_conduct": {
             "type": "thermalCouplingOutput",
-            "thermalCouplingMode": "daCustom",
             "patches": ["channel_outer", "channel_inner"],
             "components": ["thermalCoupling"],
         },
@@ -237,3 +239,59 @@ if (abs(HFX - 180000.0) / (HFX + 1e-16)) > 1e-6:
     exit(1)
 else:
     print("DACustomHeatTransferFoam test passed!")
+
+
+# ********************
+# compressible tests
+# ********************
+os.chdir("./reg_test_files-main/ConvergentChannel")
+
+if gcomm.rank == 0:
+    os.system("rm -rf 0/* processor* *.bin")
+    os.system("cp -r 0.compressible/* 0/")
+    os.system("cp -r system.subsonic/* system/")
+    os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
+
+# aero setup
+U0 = 100.0
+
+daOptions = {
+    "solverName": "DARhoSimpleFoam",
+    "wallDistanceMethod": "daCustom",
+    "primalMinResTol": 1.0e-12,
+    "primalMinResTolDiff": 1e4,
+    "printDAOptions": False,
+    "primalBC": {
+        "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
+        "T0": {"variable": "T", "patches": ["inlet"], "value": [310.0]},
+        "p0": {"variable": "p", "patches": ["outlet"], "value": [101325.0]},
+        "useWallFunction": True,
+    },
+    "function": {
+        "HFX": {
+            "type": "wallHeatFlux",
+            "byUnitArea": False,
+            "source": "patchToFace",
+            "patches": ["walls"],
+            "scale": 1.0,
+        },
+    },
+}
+
+DASolver = PYDAFOAM(options=daOptions, comm=gcomm)
+DASolver()
+
+funcs = {}
+DASolver.evalFunctions(funcs)
+
+if gcomm.rank == 0:
+    print(funcs)
+
+diff = abs(8967.626339020631 - funcs["HFX"]) / 8967.626339020631
+if diff > 1e-10:
+    if gcomm.rank == 0:
+        print("DAFunction comp test failed for HFX")
+    exit(1)
+else:
+    if gcomm.rank == 0:
+        print("DAFunction comp test passed!")
