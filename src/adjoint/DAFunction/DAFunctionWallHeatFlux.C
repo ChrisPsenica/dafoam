@@ -41,7 +41,7 @@ DAFunctionWallHeatFlux::DAFunctionWallHeatFlux(
 {
 
     // check and assign values for scheme and formulation
-    distanceMode_ = daOption_.getAllOptions().lookupOrDefault<word>("wallDistanceMethod", "default");
+    distanceMode_ = daOption_.getAllOptions().getWord("wallDistanceMethod")
     if (distanceMode_ != "daCustom" && distanceMode_ != "default")
     {
         FatalErrorIn(" ") << "wallDistanceMethod: "

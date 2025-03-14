@@ -43,7 +43,7 @@ DAOutputThermalCoupling::DAOutputThermalCoupling(
     discipline_ = daOption_.getAllOptions().getWord("discipline");
 
     // check coupling mode and validate
-    distanceMode_ = daOption_.getAllOptions().lookupOrDefault<word>("wallDistanceMethod", "default");
+    distanceMode_ = daOption_.getAllOptions().getWord("wallDistanceMethod")
     if (distanceMode_ != "daCustom" && distanceMode_ != "default")
     {
         FatalErrorIn(" ") << "wallDistanceMethod: "
