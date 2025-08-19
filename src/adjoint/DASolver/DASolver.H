@@ -203,7 +203,12 @@ public:
     }
 
     // Member functions
-
+    void printMeshSize()
+    {
+        label nCells = meshPtr_->nCells();
+        Info << "Mesh cells: " << nCells << endl;
+    }    
+    
     /// initialize fields and variables
     virtual void initSolver() = 0;
 

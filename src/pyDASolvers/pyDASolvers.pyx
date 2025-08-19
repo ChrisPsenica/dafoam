@@ -54,6 +54,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int getOutputSize(char *, char *)
         void calcOutput(char *, char *, double *)
         int getInputDistributed(char *, char *)
+        void printMeshSize()
         int getOutputDistributed(char *, char *)
         void setSolverInput(char *, char *, int, double *, double *)
         void calcdRdWT(int, PetscMat)
@@ -145,6 +146,9 @@ cdef class pyDASolvers:
         solver = pyDASolvers("DASolvers -parallel -python", aeroOptions)
         """
         self._thisptr = new DASolvers(argsAll, pyOptions)
+
+    def printMeshSize(self):
+        self._thisptr.printMeshSize()
 
     # wrap all the other member functions in the cpp class
     def initSolver(self):

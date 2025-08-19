@@ -69,6 +69,7 @@ class DAOPTION(object):
         ## - DATurboFoam:             Compressible steady-state flow solver for Navier-Stokes equations (turbomachinery)
         ## - DASolidDisplacementFoam: Steady-state structural solver for linear elastic equations
         self.solverName = "DASimpleFoam"
+        self.testOption = 3.0
 
         ## The convergence tolerance for the primal solver. If the primal can not converge to 2 orders
         ## of magnitude (default) higher than this tolerance, the primal solution will return fail=True
@@ -779,7 +780,7 @@ class PYDAFOAM(object):
             self.renameSolution(self.nSolvePrimals)
 
         self.nSolvePrimals += 1
-
+        self.solver.printMeshSize()
         return
 
     def _getDefOptions(self):

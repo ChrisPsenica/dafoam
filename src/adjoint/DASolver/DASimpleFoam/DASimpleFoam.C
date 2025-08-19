@@ -181,6 +181,12 @@ label DASimpleFoam::solvePrimal()
     Info << "End\n"
          << endl;
 
+    Info << "First change!" << endl;
+
+    scalar testOption =
+        daOptionPtr_->getOption<scalar>("testOption");
+    Info << "My test option is: " << testOption << endl;
+
     return this->checkPrimalFailure();
 }
 

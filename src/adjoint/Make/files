@@ -35,6 +35,7 @@ DAFunction/DAFunctionTotalPressure.C
 DAFunction/DAFunctionVariance.C
 DAFunction/DAFunctionMassFlowRate.C
 DAFunction/DAFunctionPatchMean.C
+DAFunction/DAFunctionTestFunc.C
 DAFunction/DAFunctionTotalPressureRatio.C
 DAFunction/DAFunctionTotalTemperatureRatio.C
 DAFunction/DAFunctionVariableVolSum.C
@@ -60,6 +61,7 @@ DAInput/DAInputFieldUnsteady.C
 DAInput/DAInputThermalCoupling.C
 DAInput/DAInputRegressionPar.C
 DAInput/DAInputFvSourcePar.C
+DAInput/DAInputPatchVx.C
 
 DAOutput/DAOutput.C
 DAOutput/DAOutputResidual.C

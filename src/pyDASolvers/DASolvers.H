@@ -60,6 +60,11 @@ public:
         DASolverPtr_->initSolver();
     }
 
+    void printMeshSize()
+    {
+        DASolverPtr_->printMeshSize();
+    }
+    
     /// solve the primal equations
     label solvePrimal()
     {
