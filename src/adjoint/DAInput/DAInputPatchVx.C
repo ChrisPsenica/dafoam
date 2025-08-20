@@ -42,6 +42,7 @@ void DAInputPatchVx::run(const scalarList& input)
 
     // NOTE: we need to first update DAGlobalVar::patchVelocity here, so that daFunction-force
     // can use it to compute the force direction.
+
     wordList patchNames;
     dictionary patchVSubDict = daOption_.getAllOptions().subDict("inputInfo").subDict(inputName_);
     patchVSubDict.readEntry<wordList>("patches", patchNames);

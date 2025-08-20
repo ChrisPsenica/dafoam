@@ -31,7 +31,7 @@ class DAInputPatchVx
 
 protected:
 public:
-    TypeName("patchVx");
+    TypeName("patchVx")
     // Constructors
 
     //- Construct from components
@@ -52,7 +52,7 @@ public:
 
     virtual label size()
     {
-        // [UMag, AoA]
+        // [Ux]
         return 1;
     }
 
