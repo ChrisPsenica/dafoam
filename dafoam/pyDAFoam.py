@@ -2488,7 +2488,7 @@ class surrogateOptimization(object):
         optType = self.options["optType"]
         designVars = self.options["designVars"]
         dvNames = self.options["dvNames"]
-        consEqs = self.options["consEgs"]
+        consEqs = self.options["consEqs"]
         cons = self.options["cons"]
         conWeights = self.options["conWeights"]
         length = int(x.shape[0])
