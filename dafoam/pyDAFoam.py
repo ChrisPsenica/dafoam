@@ -36,6 +36,7 @@ from smt.utils.design_space import DesignSpace
 from smt.surrogate_models import KRG
 from smt.sampling_methods import LHS
 
+
 class DAOPTION(object):
     """
     Define a set of options to use in PYDAFOAM and set their initial values.
@@ -2387,28 +2388,29 @@ class TensorFlowHelper:
                 idx = i * gradients_tf.shape[1] + j
                 inputs_b[idx] = gradients_tf.numpy()[i, j] * outputs_b[i]
 
+
 class surrogateOptimization(object):
-    '''
+    """
     INFO:
     -----
-    This is a class to handle surrogate based optimization (SBO) in DAFoam. SBO is currently supported for constrained optimization and uses the 
-    Efficient Global Optimization algorithm. To run this optimization, import this class to a separate python file in a DAFoam case and pass in 
+    This is a class to handle surrogate based optimization (SBO) in DAFoam. SBO is currently supported for constrained optimization and uses the
+    Efficient Global Optimization algorithm. To run this optimization, import this class to a separate python file in a DAFoam case and pass in
     the surrogateOptions dictionary and openMDAO model to surrogateOptimization:
 
-                    surrogateOptimization(surrogateOptions , om_problem)
+                    surrogateOptimization(surrogateOptions , om_prob)
 
     The surrogateOptions dictionary is a list of optimization parameters to use for fine tuning the surrogate modeling and optimization. For the
-    full list of options and the current default values:
+    full list of options:
 
                     surrogateOptions = {
                         "optType"    : what type of optimization to run ------------------> "constrained" , "unconstrained"
-                        "criterion"  : criterion for next evaluation point determination -> "EI", "SBO", "LCB" 
+                        "criterion"  : criterion for next evaluation point determination -> "EI", "SBO", "LCB"
                         "iters"      : num iterations to optimize objective function -----> int
                         "numDOE"     : num DOE points to use -----------------------------> int
                         "seed"       : seed value to replicate results -------------------> int
-                        "designVars" : array of design variable arrays -------------------> [[dv1] , [dv2] , . . .]
                         "dvNames"    : names of design variables -------------------------> ["dv1 name" , "dv2 name" , . . .],
-                        "dvBounds"   : design variable bounds (upper to lower) -----------> [[l1 , u1] , [l2 , u2] , . . .]
+                        "dvBounds"   : bounds on each design variable --------------------> [[L1 , U1] , [L2 , U2] , . . .]
+                        "dvSizes"    : design variable sizes (ex. num of FFDs) -----------> [size1 , size2 , . . .]
                         "objFunc"    : name of objective function ------------------------> str
                         "cons"       : array of constrained om_prob values ---------------> ['con1 value' , 'con2 value' , . . .]
                         "conWeights" : array of scalar values for constraint penalties ---> float
@@ -2417,122 +2419,126 @@ class surrogateOptimization(object):
 
     NOTES ON IMPLEMENTATION:
     ------------------------
-    1.) "designVars", "dvNames", and "dvBounds" must have the design variable information listed in the same order
+    1.) "designVars", "dvNames", "dvBounds", and "dvSizes" must have the design variable information listed in the same order
     2.) "cons", "conWeight", and "consEqs" must have the constraint function information listed in the same order
     3.) all constraint equations in "consEqs" must be equations of variable x
-    '''
+    """
 
-    def __init__(self , options , om_prob):
+    def __init__(self, options, om_prob, comm=None):
 
         defaultOptions = {
-
-            ##& This optimization method can support both constrained and unconstrained optimizations.
-            ##& The default option set here is unconstrained optimization problem
+            ## This optimization method can support both constrained and unconstrained optimizations.
+            ## The default option set here is unconstrained optimization problem
             "optType": "unconstrained",
 
-            ##& The criterion used to terminate the optimization problem. The default option is to use
-            ##& the 'expected improvement' (EI) scheme. When the the EI is less than a specified threshold
-            ##& the optimization terminates. Other options are 'surrogate based optimization' (SBO), 
-            ##& and 'lower confidence bound' (LCB). SBO directly uses the prediction of the surrogate model
-            ##& and LCB uses the 99% confidence interval.
-            "criterion": "EI",      
+            ## The criterion used to terminate the optimization problem. The default option is to use
+            ## the 'expected improvement' (EI) scheme. When the the EI is less than a specified threshold
+            ## the optimization terminates. Other options are 'surrogate based optimization' (SBO),
+            ## and 'lower confidence bound' (LCB). SBO directly uses the prediction of the surrogate model
+            ## and LCB uses the 99% confidence interval.
+            "criterion": "EI",
 
-            ##& The number of iterations for the optimization problem. Increase this to converge better on the 
-            ##& optimal point (will increase run time if increasing).         
-            "iters": 5,          
+            ## The number of iterations for the optimization problem. Increase this to converge better on the
+            ## optimal point (will increase run time if increasing).
+            "iters": 5,
 
-            ##& The number of 'design of experiment' (DOE) points to use. This is the number of sampling points
-            ##& to use for initially creating the surrogate model. More points will help find the optimal point
-            ##& but increase the run time.       
-            "numDOE": 8,   
+            ## The number of 'design of experiment' (DOE) points to use. This is the number of sampling points
+            ## to use for initially creating the surrogate model. More points will help find the optimal point
+            ## but increase the run time.
+            "numDOE": 8,
 
-            ##& The DOE points (numDOE) are generated via an RNG. Results are only guaranteed to be reproducible
-            ##& if a seed value is set. Here the default option is 45.               
-            "seed": 45, 
+            ## The DOE points (numDOE) are generated via an RNG. Results are only guaranteed to be reproducible
+            ## if a seed value is set. Here the default option is 45.
+            "seed": 45,
 
-            ##& Arrays (nested) of design variables.          
-            "designVars": [],
-
-            ##& Assign names to design variables.
+            ## Assign names to design variables.
             "dvNames": [],
 
-            ##& Nested array of design variable bounds.
+            ## Assign design variable bounds
             "dvBounds": [],
 
-            ##& Assign an objective function from runScript.
-            "objFunc": '',
+            ## Array of design variable sizes.
+            "dvSizes": [],
 
-            ##& Assign constrained values if doing a constrained optimization.
+            ## Assign an objective function from runScript.
+            "objFunc": "",
+
+            ## Assign constrained values if doing a constrained optimization.
             "cons": [],
 
-            ##& A quadratic penalty method is implemented for constrained optimization
-            ##& with a scalar value ('conWeights'). The quadratic penalty method is then
-            ##& conWeight * constraint(x)**2. All constraints must be a function of 
-            ##& variable x.
+            ## A quadratic penalty method is implemented for constrained optimization
+            ## with a scalar value ('conWeights'). The quadratic penalty method is then
+            ## conWeight * constraint(x)**2. All constraints must be a function of
+            ## variable x.
             "conWeights": [],
-
-            ##& The constraint equations to use in the problem. As an example, to constrain
-            ##& lift, Cl = 0.5, the constraint would be formatted as:
-            ##& 
-            ##&                 Cl = 0.5 -> Cl - 0.5 = 0 -> x - 0.5 = 0
-            ##&                 then -> "consEqs": ["x - 0.5"]
+            
+            ## The constraint equations to use in the problem. As an example, to constrain
+            ## lift, Cl = 0.5, the constraint would be formatted as:
+            ##
+            ##                 Cl = 0.5 -> Cl - 0.5 = 0 -> x - 0.5 = 0
+            ##                 then -> "consEqs": ["x - 0.5"]
             "consEqs": [],
         }
 
         self.options = {**defaultOptions, **options}
         self.om_prob = om_prob
+        self.comm = MPI.COMM_WORLD
         self.EGO()
 
-    def obj_val(self , x):
+    def obj_val(self, x):
+        """
+        Calculate objective function and get constraint function values
+        """
+        self.optType = self.options["optType"]
+        self.dvNames = self.options["dvNames"]
+        self.consEqs = self.options["consEqs"]
+        self.cons = self.options["cons"]
+        self.conWeights = self.options["conWeights"]
+        self.dvSizes = self.options["dvSizes"]
 
-        optType = self.options["optType"]
-        designVars = self.options["designVars"]
-        dvNames = self.options["dvNames"]
-        consEqs = self.options["consEqs"]
-        cons = self.options["cons"]
-        conWeights = self.options["conWeights"]
-        length = int(x.shape[0])
-        numDVs = int(len(dvNames))
-        numCons = int(len(cons))
-        objFunc = np.zeros(length)
-        start = 0
+        self.length = int(x.shape[0])
+        self.numDVs = len(self.dvNames)
+        self.numCons = len(self.cons)
+        self.objFunc = np.zeros(self.length)
 
-        for i in range(length):
+        for i in range(self.length):
 
-            #~ update design variables in runScript
-            for j in range(numDVs):
-                numPoints = int(len(designVars[j]))
-                designVars[j] = x[i , start : start + numPoints]
-                start += numPoints
-                self.om_prob.set_val(dvNames[j] , designVars[j])
+            # update design variables in runScript
+            self.setDesignPoint(x[i])
 
-            #~ run dafoam to get data
+            # run dafoam to get data
+            if self.comm.rank == 0:
+                print("Running analysis on DOE point:", i)
+                print("----------------------------------")
             self.om_prob.run_model()
 
-            #~ update objFunc value
-            objFunc[i] = self.om_problem.get_val(self.options["objFunc"])
+            # update objFunc value
+            self.objFunc[i] = self.om_prob.get_val(self.options["objFunc"])
 
-            if optType == "constrained":
+            if self.optType == "constrained":
 
-                #~ add constraint penalty method if optType is constrained
-                for k in range(numCons):
-                    objFunc[i] += conWeights[k] * self.evalConstraint(consEqs[k] , cons[k])**2
+                # add constraint penalty method if optType is constrained
+                self.conViolation = np.zeros(self.numCons)
+                for k in range(self.numCons):
+                    self.conViolation[k] = self.evalConstraint(self.consEqs[k], self.cons[k])
+                    self.objFunc[i] += self.conWeights[k] * self.conViolation[k] ** 2
 
-            elif optType == "unconstrained":
+            elif self.optType == "unconstrained":
                 pass
             else:
                 raise ValueError('"optType" is incorrect, supported optimizations are: constrained, unconstrained')
-            
-            #~ print design point info
-            self.returnDesignPoint()
 
-            #! TODO: clean case to rerun?
+            # print design point info
+            if self.comm.rank == 0:
+                self.returnDesignPointInfo(x[i], i)
 
-        return objFunc.reshape((-1 , 1))
-    
+        return self.objFunc.reshape((-1, 1))
+
     def EGO(self):
-
-        design_space = DesignSpace(self.options["dvBounds"]) 
+        """
+        Run the EGO optimization and return optimum point to user
+        """
+        design_space = DesignSpace(self.options["dvBounds"])
 
         ego = EGO(
             n_iter=self.options["iters"],
@@ -2542,29 +2548,52 @@ class surrogateOptimization(object):
             random_state=self.options["seed"],
         )
 
-        #~ run EGO algorithm
+        # run EGO algorithm
         x_opt, _, _, _, _ = ego.optimize(fun=self.obj_val)
-
-        #~ run primal on opt config for post processing
         if self.comm.rank == 0:
-            print("optimum point:", x_opt)
+            print("Optimized finished, running analysis on optimal point")
+            print("-----------------------------------------------------")
 
-    def evalConstraint(self , conEq , conValue):
+        # run primal on opt config for post processing
+        self.setDesignPoint(x_opt)
+        self.om_prob.run_model()
+        if self.comm.rank == 0:
+            self.returnDesignPointInfo(x_opt, "Optimal point")
 
+    def evalConstraint(self, conEq, conValue):
+        """
+        Compute constraint function value
+        """
         value = self.om_prob.get_val(conValue)
-
         return eval(conEq, {"__builtins__": {}}, {"x": value})
-    
-    def returnDesignPoint(self):
 
-        if self.comm.rank == 0:
+    def setDesignPoint(self, x):
+        """
+        Assign DV values to OpenMDAO model
+        """
+        start = 0
+        for j in range(self.numDVs):
+            self.om_prob.set_val(self.dvNames[j], x[start : start + self.dvSizes[j]])
+            start += self.dvSizes[j]
 
-            designVars = self.options["designVars"]
-            dvNames = self.options["dvNames"]
-            numDVs = int(len(dvNames))
+    def returnDesignPointInfo(self, x, idxDOE):
+        """
+        Return information about current point to user
+        """
+        print("Analysis results of DOE point:", idxDOE)
+        print("----------------------------------")
+        start = 0
+        for j in range(self.numDVs):
+            print(self.dvNames[j], "=", x[start : start + self.dvSizes[j]])
+            start += self.dvSizes[j]
 
-            #~ return DVs to user
-            for j in range(numDVs):
-                numPoints = int(len(designVars[j]))
-                print(dvNames[j] , designVars[start : start + numPoints])
-                start += numPoints
+        print(self.options["objFunc"], "=", self.om_prob.get_val(self.options["objFunc"]))
+
+        if self.optType == "constrained":
+
+            for k in range(self.numCons):
+                print("Constraint violation for", self.cons[k], ":", self.conViolation[k])
+
+        elif self.optType == "unconstrained":
+            pass
+        print("\n")
