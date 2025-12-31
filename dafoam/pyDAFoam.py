@@ -2430,48 +2430,37 @@ class surrogateOptimization(object):
             ## This optimization method can support both constrained and unconstrained optimizations.
             ## The default option set here is unconstrained optimization problem
             "optType": "unconstrained",
-
             ## The criterion used to terminate the optimization problem. The default option is to use
             ## the 'expected improvement' (EI) scheme. When the the EI is less than a specified threshold
             ## the optimization terminates. Other options are 'surrogate based optimization' (SBO),
             ## and 'lower confidence bound' (LCB). SBO directly uses the prediction of the surrogate model
             ## and LCB uses the 99% confidence interval.
             "criterion": "EI",
-
             ## The number of iterations for the optimization problem. Increase this to converge better on the
             ## optimal point (will increase run time if increasing).
             "iters": 5,
-
             ## The number of 'design of experiment' (DOE) points to use. This is the number of sampling points
             ## to use for initially creating the surrogate model. More points will help find the optimal point
             ## but increase the run time.
             "numDOE": 8,
-
             ## The DOE points (numDOE) are generated via an RNG. Results are only guaranteed to be reproducible
             ## if a seed value is set. Here the default option is 45.
             "seed": 45,
-
             ## Assign names to design variables.
             "dvNames": [],
-
             ## Assign design variable bounds
             "dvBounds": [],
-
             ## Array of design variable sizes.
             "dvSizes": [],
-
             ## Assign an objective function from runScript.
             "objFunc": "",
-
             ## Assign constrained values if doing a constrained optimization.
             "cons": [],
-
             ## A quadratic penalty method is implemented for constrained optimization
             ## with a scalar value ('conWeights'). The quadratic penalty method is then
             ## conWeight * constraint(x)**2. All constraints must be a function of
             ## variable x.
             "conWeights": [],
-            
             ## The constraint equations to use in the problem. As an example, to constrain
             ## lift, Cl = 0.5, the constraint would be formatted as:
             ##
