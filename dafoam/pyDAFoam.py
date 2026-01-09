@@ -32,7 +32,7 @@ except ImportError:
 
 import openmdao.api as om
 from smt.applications import EGO
-from smt.utils.design_space import DesignSpace
+from smt.design_space import DesignSpace
 from smt.surrogate_models import KRG
 from smt.sampling_methods import LHS
 
@@ -2408,13 +2408,22 @@ class surrogateOptimization(object):
                         "iters"      : num iterations to optimize objective function -----> int
                         "numDOE"     : num DOE points to use -----------------------------> int
                         "seed"       : seed value to replicate results -------------------> int
-                        "dvNames"    : names of design variables -------------------------> ["dv1 name" , "dv2 name" , . . .],
+                        "dvNames"    : names of design variables -------------------------> ["dv1 name" , "dv2 name" , . . .]
                         "dvBounds"   : bounds on each design variable --------------------> [[L1 , U1] , [L2 , U2] , . . .]
                         "dvSizes"    : design variable sizes (ex. num of FFDs) -----------> [size1 , size2 , . . .]
                         "objFunc"    : name of objective function ------------------------> str
                         "cons"       : array of constrained om_prob values ---------------> ['con1 value' , 'con2 value' , . . .]
                         "conWeights" : array of scalar values for constraint penalties ---> float
                         "consEqs"    : array of constraint equations ---------------------> ["eq1(x)" , "eq2(x)" , . . .]
+                        "maxIter"    : maximum number of iterations ----------------------> int
+                        "nStart"     : number of start points ----------------------------> int
+                        "nParallel"  : parallel samples for q-EI criterion ---------------> int
+                        "qEI"        : how to maximize q-EI ------------------------------> "KB" , "KBLB" , "KBUB" , "KBRand" , "CLmin"
+                        "xdoe"       : array of initial DOE points -----------------------> [X1 , X2 , . . .]
+                        "ydoe"       : array of initial DOE point outputs ----------------> [Y1 , Y2 , . . .]
+                        "verbose"    : print extra information during run time -----------> bool
+                        "tunneling"  : penalize points which have already been evaluated -> bool
+                        "reInterp"   : reinterpolate variance for training points --------> bool
                     }
 
     NOTES ON IMPLEMENTATION:
@@ -2422,13 +2431,14 @@ class surrogateOptimization(object):
     1.) "designVars", "dvNames", "dvBounds", and "dvSizes" must have the design variable information listed in the same order
     2.) "cons", "conWeight", and "consEqs" must have the constraint function information listed in the same order
     3.) all constraint equations in "consEqs" must be equations of variable x
+    4.) provide either "xdoe" or "numDOE". "numDOE" uses a RNG to get the initial DOE points, xdoe is for specifying the initial xdoe points (xdoe may be coupled with ydoe)
     """
 
     def __init__(self, options, om_prob, comm=None):
 
         defaultOptions = {
             ## This optimization method can support both constrained and unconstrained optimizations.
-            ## The default option set here is unconstrained optimization problem
+            ## The default option set here is unconstrained optimization problem.
             "optType": "unconstrained",
             ## The criterion used to terminate the optimization problem. The default option is to use
             ## the 'expected improvement' (EI) scheme. When the the EI is less than a specified threshold
@@ -2442,13 +2452,13 @@ class surrogateOptimization(object):
             ## The number of 'design of experiment' (DOE) points to use. This is the number of sampling points
             ## to use for initially creating the surrogate model. More points will help find the optimal point
             ## but increase the run time.
-            "numDOE": 8,
+            "numDOE": None,
             ## The DOE points (numDOE) are generated via an RNG. Results are only guaranteed to be reproducible
             ## if a seed value is set. Here the default option is 45.
             "seed": 45,
             ## Assign names to design variables.
             "dvNames": [],
-            ## Assign design variable bounds
+            ## Assign design variable bounds.
             "dvBounds": [],
             ## Array of design variable sizes.
             "dvSizes": [],
@@ -2467,6 +2477,24 @@ class surrogateOptimization(object):
             ##                 Cl = 0.5 -> Cl - 0.5 = 0 -> x - 0.5 = 0
             ##                 then -> "consEqs": ["x - 0.5"]
             "consEqs": [],
+            ## Maximum number of optimization iterations.
+            "maxIter": 10,
+            ## Number of optimization start points.
+            "nStart": 5,
+            ## Number of parallel samples for q-EI criterion.
+            "nParallel": 1,
+            ## q-EI maximization strategy.
+            "qEI": "KBLB",
+            ## Initial DOE points to use (if not wanting to use numDOE which generates the doe points using a RNG).
+            "xdoe": None,
+            ## Initial DOE outputs to use for intial DOE inputs.
+            "ydoe": None,
+            ## Wether to print additional computation information during the execution.
+            "verbose": False,
+            ## Whether to enable the penalization of points that have been already evaluated in the EI criterion.
+            "tunneling": False,
+            ## Whether to reinterpolate the variance for the training points.
+            "reInterp": False,
         }
 
         self.options = {**defaultOptions, **options}
@@ -2529,19 +2557,60 @@ class surrogateOptimization(object):
         """
         design_space = DesignSpace(self.options["dvBounds"])
 
-        ego = EGO(
-            n_iter=self.options["iters"],
-            criterion=self.options["criterion"],
-            n_doe=self.options["numDOE"],
-            surrogate=KRG(design_space=design_space, print_global=False),
-            random_state=self.options["seed"],
-        )
-
+        if self.options["xdoe"] == None: # use n_doe
+            ego = EGO(
+                n_iter=self.options["iters"],
+                criterion=self.options["criterion"],
+                surrogate=KRG(design_space=design_space, print_global=False),
+                seed=self.options["seed"],
+                n_max_optim=self.options["maxIter"],
+                n_start=self.options["nStart"],
+                n_parallel=self.options["nParallel"],
+                qEI=self.options["qEI"],
+                verbose=self.options["verbose"],
+                enable_tunneling=self.options["tunneling"],
+                is_ri=self.options["reInterp"],
+                n_doe=self.options["numDOE"],
+            )
+        elif self.options["numDOE"] == None and self.options["ydoe"] == None: # use xdoe only
+            ego = EGO(
+                n_iter=self.options["iters"],
+                criterion=self.options["criterion"],
+                surrogate=KRG(design_space=design_space, print_global=False),
+                seed=self.options["seed"],
+                n_max_optim=self.options["maxIter"],
+                n_start=self.options["nStart"],
+                n_parallel=self.options["nParallel"],
+                qEI=self.options["qEI"],
+                verbose=self.options["verbose"],
+                enable_tunneling=self.options["tunneling"],
+                is_ri=self.options["reInterp"],
+                xdoe=self.options["xdoe"],
+            )
+        elif self.options["xdoe"] != None and self.options["ydoe"] != None: # use xdoe and ydoe
+            ego = EGO(
+                n_iter=self.options["iters"],
+                criterion=self.options["criterion"],
+                surrogate=KRG(design_space=design_space, print_global=False),
+                seed=self.options["seed"],
+                n_max_optim=self.options["maxIter"],
+                n_start=self.options["nStart"],
+                n_parallel=self.options["nParallel"],
+                qEI=self.options["qEI"],
+                verbose=self.options["verbose"],
+                enable_tunneling=self.options["tunneling"],
+                is_ri=self.options["reInterp"],
+                xdoe=self.options["xdoe"],
+                ydoe=self.options["ydoe"],
+            )
+        else:
+            raise ValueError('Input parameter(s) for DOE points is incorrect! Either "numDOE" (int) or "xdoe" (numpy.ndarray)')
+        
         # run EGO algorithm
         x_opt, _, _, _, _ = ego.optimize(fun=self.obj_val)
         if self.comm.rank == 0:
-            print("Optimized finished, running analysis on optimal point")
-            print("-----------------------------------------------------")
+            print("Optimization finished, running analysis on optimal point")
+            print("--------------------------------------------------------")
 
         # run primal on opt config for post processing
         self.setDesignPoint(x_opt)
